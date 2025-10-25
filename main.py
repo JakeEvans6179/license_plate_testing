@@ -7,7 +7,7 @@ import numpy as np
 
 conf_threshold = 0.4 #only include confidence level >= 40%
 
-
+image_dictionary = {} #used to store all the cropped images used for OCR detection
 #custom yolo model
 model = YOLO('license_plate_best.pt')
 
@@ -63,7 +63,7 @@ while capture.isOpened():
         for i in range(len(filtered_boxes)):
 
             box_coords = filtered_boxes[i].xyxy.cpu().numpy().astype(int) #extract coordinates of bounding box, moves tensor data from gpu to cpu and converts to integer data type
-            track_id = filtered_boxes[i].id.cpu().numpy.astype(int) #extract unique tracking id
+            track_id = filtered_boxes[i].id.cpu().numpy().astype(int)[0] #extract unique tracking id
 
             print("box_coords:",box_coords)
             print("track_id:",track_id)
@@ -81,6 +81,11 @@ while capture.isOpened():
 
             _, license_plate_crop_thresh = cv2.threshold(license_plate_crop_gray, 64, 255, cv2.THRESH_BINARY_INV) #pixels below 64 go to 255, pixels above 64 go to 0 for OCR
 
+            if track_id not in image_dictionary:
+                image_dictionary[track_id] = [] #create list to hold the images with track id as the key
+
+            image_dictionary[track_id].append(license_plate_crop_thresh)
+
             cv2.imshow(f"Processed Plate ID {track_id}", license_plate_crop_thresh)
     #plot results on screen
     frame_plot = results[0].plot()
@@ -96,3 +101,7 @@ while capture.isOpened():
 #end script
 capture.release()
 cv2.destroyAllWindows()
+
+print("Summary of Collected Images")
+for track_id, images in image_dictionary.items():
+    print(f"Car ID {track_id}: Collected {len(images)} processed images.")
