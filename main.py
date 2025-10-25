@@ -3,6 +3,8 @@ import cv2
 import easyocr
 import numpy as np
 
+
+
 conf_threshold = 0.4 #only include confidence level >= 40%
 
 
@@ -41,7 +43,7 @@ while capture.isOpened():
     detections = results[0]
 
     for detection in detections.boxes.data.tolist():
-        print(detection) #prints x1, y1, x2, y2, trackid, conflvl, classid
+        print(detection) #prints [x1, y1, x2, y2, trackid, conflvl, classid]
 
 
 
@@ -56,8 +58,30 @@ while capture.isOpened():
 
     results[0].boxes = filtered_boxes
 
+    #cropping and processing for OCR
+    if filtered_boxes.id is not None:
+        for i in range(len(filtered_boxes)):
+
+            box_coords = filtered_boxes[i].xyxy.cpu().numpy().astype(int) #extract coordinates of bounding box, moves tensor data from gpu to cpu and converts to integer data type
+            track_id = filtered_boxes[i].id.cpu().numpy.astype(int) #extract unique tracking id
+
+            print("box_coords:",box_coords)
+            print("track_id:",track_id)
+
+            x1, y1, x2, y2 = box_coords[0] #unpack coordinates
+
+            license_plate_crop = frame[y1:y2, x1:x2] #crop license plate from original frame
+
+            if license_plate_crop.size == 0: #prevent empty crops
+                continue
 
 
+            #process cropped image for OCR
+            license_plate_crop_gray = cv2.cvtColor(license_plate_crop, cv2.COLOR_BGR2GRAY)
+
+            _, license_plate_crop_thresh = cv2.threshold(license_plate_crop_gray, 64, 255, cv2.THRESH_BINARY_INV) #pixels below 64 go to 255, pixels above 64 go to 0 for OCR
+
+            cv2.imshow(f"Processed Plate ID {track_id}", license_plate_crop_thresh)
     #plot results on screen
     frame_plot = results[0].plot()
 
