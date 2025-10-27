@@ -2,6 +2,7 @@ from ultralytics import YOLO
 import cv2
 import easyocr
 from collections import defaultdict, deque, Counter
+import re
 
 dict_char_to_int = {'O': '0',
                     'I': '1',
@@ -27,7 +28,7 @@ image_dictionary = defaultdict(lambda: deque(maxlen=25)) #used to store all the 
 
 last_seen_frame = defaultdict(int) #stores frame in which track_id was last seen
 
-majority_vote = [] #for final processed number plate
+majority_vote = defaultdict(int) #for final processed number plate
 
 frame_count = 0 #counts the frames to be used for ocr
 
@@ -46,7 +47,15 @@ reader = easyocr.Reader(['en'])#initialise OCR reader, english language
 
 def check_plates(plate_text):
 
-    text_collection = list(plate_text) #puts into a list format
+    cleaned_text = re.sub(r'[^A-Z0-9]', ' ', str(plate_text).upper()) #removes spaces, only allows A-Z and 0-9, converts input to string
+    text_collection = list(cleaned_text) #puts into a list format
+    #text_collection = list(plate_text)
+
+    #remove space if included in string
+    for char in text_collection:
+        if char == ' ':
+            text_collection.remove(char)
+
     if len(text_collection) == 7:
         for i in [0,1]:
             #Should be alphabet here
@@ -65,6 +74,7 @@ def check_plates(plate_text):
             if text_collection[i].isdigit():    #if its a number
                 if text_collection[i] in dict_int_to_char:
                     text_collection[i] = dict_int_to_char[text_collection[i]] #replace with the most likely character
+
 
         return "".join(text_collection) #join back together
 
@@ -171,14 +181,14 @@ while capture.isOpened():
 
                     corrected_plate = check_plates(text)
                     if corrected_plate is not None:
-                        OCR_readings.append(corrected_plate) #append the value read from image, only append if correct length (ie not none) or else if majority becomes none script can crash
+                        OCR_readings.append(corrected_plate) #append the value read from image, only append if correct length (ie not none) or else if majority becomes none script will crash
 
             del image_dictionary[track_id]  #remove the images from dictionary
             del last_seen_frame[track_id]   #remove last seen frame from track_id
 
             if OCR_readings:  #Only perform majority check if there are valid plates otherwise script would crash
                 plate = Counter(OCR_readings).most_common(1)[0][0] #gets majority vote
-                majority_vote.append(plate)
+                majority_vote[track_id] = plate
 
 
 

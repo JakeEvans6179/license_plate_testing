@@ -28,3 +28,15 @@ else:
     else:
         for (bbox, text, prob) in result:
             print(f'Text: {text}, Probability: {prob:.4f}')
+
+
+
+plate = 'abc efg'
+
+fixed = list(plate)
+
+for i in fixed:
+    if i == ' ':
+        fixed.remove(i)
+
+print(fixed)
