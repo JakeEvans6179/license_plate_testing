@@ -3,6 +3,19 @@ import cv2
 import easyocr
 from collections import defaultdict, deque, Counter
 import re
+import os
+import shutil
+import csv
+
+#create directories
+validated_dir = 'validated_plates'
+unrecognised_dir = 'unrecognised_plates'
+
+if os.path.exists(validated_dir): shutil.rmtree(validated_dir)
+if os.path.exists(unrecognised_dir): shutil.rmtree(unrecognised_dir)
+
+os.makedirs(validated_dir, exist_ok=True)
+os.makedirs(unrecognised_dir, exist_ok=True)
 
 dict_char_to_int = {'O': '0',
                     'I': '1',
@@ -28,7 +41,7 @@ image_dictionary = defaultdict(lambda: deque(maxlen=25)) #used to store all the 
 
 last_seen_frame = defaultdict(int) #stores frame in which track_id was last seen
 
-majority_vote = defaultdict(int) #for final processed number plate
+majority_vote = {} #for final processed number plate
 
 frame_count = 0 #counts the frames to be used for ocr
 
@@ -79,6 +92,7 @@ def check_plates(plate_text):
         return "".join(text_collection) #join back together
 
     else:
+        print("Unrecognized plate text, saving image to dir for manual check")
         return None
 
 if not capture.isOpened():
@@ -174,14 +188,38 @@ while capture.isOpened():
 
             OCR_readings = [] #used to store temporary OCR readings used for majority voting
 
-            for image in image_dictionary[track_id]:
+
+            for index, image in enumerate(image_dictionary[track_id]):
                 result = reader.readtext(image, allowlist=allowlist) #read image, only allowing alphabet and numbers to be read
+
+
 
                 for (bbox, text, prob) in result:
 
                     corrected_plate = check_plates(text)
                     if corrected_plate is not None:
                         OCR_readings.append(corrected_plate) #append the value read from image, only append if correct length (ie not none) or else if majority becomes none script will crash
+
+                        #add validated plate image to a directory with track id for manual check
+                        track_dir_val = os.path.join(validated_dir,str(track_id))  # create path to sub directory with track id as name
+                        os.makedirs(track_dir_val, exist_ok=True)  # create the directory if its not already created
+
+                        filename = f"validated_{index}.jpg"
+                        save_path = os.path.join(track_dir_val, filename)
+
+                        cv2.imwrite(save_path, image)
+
+                    else:
+
+                        #add unrecognised plate image to a directory with track id for manual check
+                        track_dir = os.path.join(unrecognised_dir, str(track_id)) #create path to sub directory with track id as name
+                        os.makedirs(track_dir, exist_ok=True)   #create the directory if its not already created
+
+                        filename = f"failed_validation_{index}.jpg"
+                        save_path = os.path.join(track_dir, filename)
+
+                        cv2.imwrite(save_path, image)
+
 
             del image_dictionary[track_id]  #remove the images from dictionary
             del last_seen_frame[track_id]   #remove last seen frame from track_id
