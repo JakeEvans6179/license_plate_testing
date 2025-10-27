@@ -1,7 +1,6 @@
 from ultralytics import YOLO
 import cv2
 import easyocr
-import numpy as np
 from collections import defaultdict, deque, Counter
 
 dict_char_to_int = {'O': '0',
@@ -39,9 +38,9 @@ model = YOLO('license_plate_best.pt')
 video_path = 'traffic_cam.mp4'
 
 #open video
-capture = cv2.VideoCapture(video_path) #replace with 0 for webcam
-#capture = cv2.VideoCapture(0)
-allowlist = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+capture = cv2.VideoCapture(video_path)
+#capture = cv2.VideoCapture(0) #webcam
+allowlist = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ" #characters OCR can detect
 reader = easyocr.Reader(['en'])#initialise OCR reader, english language
 
 
